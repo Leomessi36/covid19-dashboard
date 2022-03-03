@@ -1,0 +1,113 @@
+import seaborn as sns
+import numpy as np 
+import pandas as pd
+import datetime
+import matplotlib.pyplot as plt
+import plotly.express as px
+
+def plotstate(statename,feature):
+    start='20200412'
+    end='20220227'
+    dates = pd.date_range(start,end).strftime("%m-%d-%Y").to_list()
+    #features = ['Confirmed','Deaths','Recovered','Active']
+    lista = []
+    for date in dates:
+        
+        df = pd.read_csv(date+'.csv')
+        df = df.fillna(-100)
+        df.set_index('Province_State', inplace=True)
+        if df.loc[statename,feature].tolist()>0:
+                lista.append(df.loc[statename,feature].tolist())
+    
+    return lista
+
+
+
+def plottrend(feature):
+    ca_con = plotstate('California',feature)
+    ny_con = plotstate('New York',feature)
+    fl_con = plotstate('Florida',feature)
+    tx_con = plotstate('Texas',feature)
+    plt.plot(ca_con)
+    plt.plot(ny_con)
+    plt.plot(fl_con)
+    plt.plot(tx_con)
+    plt.legend(['ca','ny','fl','tx'])
+    plt.title('The trend of '+ feature+ ' of four main states')
+    plt.ylabel('population')
+    plt.xlabel('days')
+    return 0
+
+#plottrend('Deaths')
+
+
+def plotcorr(date):
+    #date form : MM-DD-YYYY
+    df = pd.read_csv(date+'.csv')
+    df = df[['Confirmed','Deaths','Recovered','Active','Incident_Rate']]
+    fig = plt.figure() 
+    ax = fig.add_subplot(111)
+    cax = ax.matshow(df.corr())  
+    fig.colorbar(cax)  
+    ticks = np.arange(0,5,1) 
+    ax.set_xticks(ticks)  
+    ax.set_yticks(ticks)
+    ax.set_xticklabels(['Confirmed', 'Deaths', 'Recovered', 'Active','Incident_Rate']) #生成x轴标签
+    ax.set_yticklabels(['Confirmed', 'Deaths', 'Recovered', 'Active','Incident_Rate'])
+    plt.tight_layout()
+#plt.show()
+#print(df.corr)
+#pd.plotting.scatter_matrix(df, alpha=0.2)
+
+
+
+
+def plotpie(date,feature):
+    df = pd.read_csv(date+'.csv')
+    df = df.loc[:,['Province_State',feature]]
+    df.sort_values(feature,inplace=True,ascending=False,ignore_index=False)
+    df.reset_index(drop=True, inplace=True)
+    data = df.loc[0:14,feature].tolist()
+    data.append(sum(df.loc[15:57,feature]))
+    sn = df.loc[0:14,'Province_State'].tolist()
+    sn.append('43 regions')
+    df_new = pd.DataFrame(data,columns=[feature])
+    df_new.insert(df_new.shape[1], 'Province_State', sn)
+#df_new
+    fig = px.pie(df_new, values=feature, names='Province_State', title=feature +' proportion on '+ date)
+    fig.show()
+    return 0
+#fig = px.pie(df, values='Confirmed', names='Province_State', title='Confirmed proportion on 01-03-2021')
+#fig.show()
+
+
+def plotscatter(date):
+    df = pd.read_csv(date+'.csv')
+    df = df[['Confirmed','Deaths','Recovered','Active','Incident_Rate']]
+    fig = pd.plotting.scatter_matrix(df,figsize=(10,10),c ='blue',marker = 'o',diagonal='',alpha = 0.8,range_padding=0.2)  
+    plt.tight_layout()
+    plt.show()
+    
+def corr_deaths_and_vacc(statename,abbr):
+    df = pd.read_csv('vacc.csv')
+    start='20201214'
+    end='20220227'
+    dates = pd.date_range(start,end).strftime("%m-%d-%Y").to_list()
+    lista = []
+    for date in dates:
+        
+        df = pd.read_csv(date+'.csv')
+        df = df.fillna(-100)
+        df.set_index('Province_State', inplace=True)
+        lista.append(df.loc[statename,'Deaths'].tolist())
+    vacc = pd.read_csv('vacc.csv')
+    subdata = vacc.loc[(vacc['Location']==abbr)]
+    vacc = list(reversed(subdata['Distributed'].tolist()))
+
+    new_data = {'vacc':vacc,'deaths':lista}
+    new_data = pd.DataFrame(new_data)
+    #fig = pd.plotting.scatter_matrix(new_data,figsize=(6,6),c ='blue',marker = 'o',diagonal='',alpha = 0.8,range_padding=0.2)  # diagonal只能为'hist'/'kde'
+    #plt.show()
+    #sns.pairplot(new_data)
+    #sns.jointplot(x = 'vaccination', y = 'deaths', data = new_data ,kind = 'hex')
+    sns.jointplot(x = 'vacc', y = 'deaths', data = new_data)    
